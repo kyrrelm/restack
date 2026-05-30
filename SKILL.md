@@ -24,6 +24,12 @@ it over hand-running git, because it captures every branch's original parent tip
 base-branch commits without creating duplicates, the one case a naive
 `git rebase --update-refs` gets wrong.
 
+**Invoke it as `~/.claude/skills/restack/restack.sh <command>`** — the script in
+this skill's own directory (substitute the actual base dir if the skill is
+installed elsewhere). Wherever this doc writes `restack <cmd>` for brevity, run
+it via that path, unless the user has put `restack` on their `PATH`. Do not
+assume a global `restack` exists; the drop-in install creates no symlink.
+
 ## No setup needed — the stack is auto-detected
 
 Stand on any branch in the stack and the script reconstructs the whole chain

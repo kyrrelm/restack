@@ -53,9 +53,31 @@ be a clean swap for GitHub's forthcoming native `gh stack` once that goes GA.
 
 ## Install
 
+### Quick install (drop-in skill)
+
+MacOS ships with an old version of bash,
 ```sh
 brew install bash        # macOS only — skip if you already have bash 4+
+```
 
+```sh
+mkdir -p ~/.claude/skills/restack && \
+for f in restack.sh SKILL.md _restack; do \
+  curl -fsSL "https://raw.githubusercontent.com/kyrrelm/restack/main/$f" \
+    -o ~/.claude/skills/restack/"$f"; \
+done && chmod +x ~/.claude/skills/restack/restack.sh
+```
+
+That's everything Claude Code needs — it discovers the skill from `SKILL.md`
+and drives `restack.sh` by its in-skill path. No symlink or shell setup
+required for the agent to use it.
+
+### Optional: use `restack` in your own terminal
+
+The drop-in above is enough for Claude. If you also want to run `restack`
+yourself from the shell (with tab-completion), symlink it onto your `PATH`:
+
+```sh
 mkdir -p ~/.local/bin ~/.zsh/completions
 ln -sf ~/.claude/skills/restack/restack.sh ~/.local/bin/restack
 ln -sf ~/.claude/skills/restack/_restack   ~/.zsh/completions/_restack
@@ -70,7 +92,9 @@ fpath=("$HOME/.zsh/completions" $fpath)
 autoload -Uz compinit && compinit
 ```
 
-Reload your shell (`exec zsh`) and run `restack help` to confirm it's on your `PATH`.
+Reload your shell (`exec zsh`) and run `restack help` to confirm it's on your
+`PATH`. If the tab-completion doesn't show up, a stale completion cache is the
+usual culprit: `rm -f ~/.zcompdump && compinit`.
 
 ## Usage
 
