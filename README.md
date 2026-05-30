@@ -67,6 +67,9 @@ That's everything Claude Code needs — it discovers the skill from `SKILL.md`
 and drives `restack.sh` by its in-skill path. No symlink or shell setup
 required for the agent to use it.
 
+Re-run the same command anytime to update to the latest version (it overwrites
+the files in place).
+
 ### Optional: use `restack` in your own terminal
 
 The drop-in above is enough for Claude. If you also want to run `restack`
