@@ -47,19 +47,14 @@ be a clean swap for GitHub's forthcoming native `gh stack` once that goes GA.
 
 ## Requirements
 
-- **bash 4+.** macOS ships bash 3.2, so `brew install bash` and make sure it's ahead of
-  `/bin/bash` on your `PATH` (the script resolves bash via `PATH`).
-- **`gh` CLI**, authenticated against your repo.
+```sh
+brew install bash        # macOS only — skip if you already have bash 4+
+brew install gh         # GitHub CLI, if you don't have it already
+```
 
 ## Install
 
 ### Quick install (drop-in skill)
-
-MacOS ships with an old version of bash,
-```sh
-brew install bash        # macOS only — skip if you already have bash 4+
-```
-
 ```sh
 mkdir -p ~/.claude/skills/restack && \
 for f in restack.sh SKILL.md _restack; do \
