@@ -1,0 +1,21 @@
+#compdef restack
+# zsh completion for restack. Install: place this file (named _restack) in a
+# directory on your $fpath, then run compinit. See SKILL.md / setup notes.
+
+local -a cmds
+cmds=(
+  'show:Print the detected stack and PR state (read-only)'
+  'sync:Propagate trunk/base changes up the stack'
+  'land:After squash-merging the bottom PR, rebase the rest onto trunk'
+  'continue:Resume after resolving a rebase conflict'
+  'abort:Abort an in-progress restack'
+  'help:Show help'
+  'ls:Alias for show'
+  'detect:Alias for show'
+)
+
+# Only complete the subcommand (the first word after `restack`); none of the
+# subcommands take further arguments.
+if (( CURRENT == 2 )); then
+  _describe -t commands 'restack command' cmds
+fi
