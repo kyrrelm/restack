@@ -92,6 +92,12 @@ fpath=("$HOME/.zsh/completions" $fpath)
 autoload -Uz compinit && compinit
 ```
 
+The snippet above is for **bare zsh**. If you use a framework (oh-my-zsh,
+prezto, etc.), it runs its own `compinit`, so add **only** the `fpath=(...)`
+line and put it **above** where the framework is sourced — drop the
+`autoload`/`compinit` line. (oh-my-zsh builds completions at source time, so
+appending `fpath` at the bottom of `~/.zshrc` is too late.)
+
 Reload your shell (`exec zsh`) and run `restack help` to confirm it's on your
 `PATH`. If the tab-completion doesn't show up, a stale completion cache is the
 usual culprit: `rm -f ~/.zcompdump && compinit`.
