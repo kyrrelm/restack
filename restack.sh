@@ -193,17 +193,55 @@ cmd_show() {
   local base_ref="$TRUNK"
   git rev-parse --verify -q "$REMOTE/$TRUNK" >/dev/null && base_ref="$REMOTE/$TRUNK"
   local parent="$base_ref" b ahead behind st
+  local bottom="${BRANCHES[0]}" bottom_ahead="" any_merged=0
   for b in "${BRANCHES[@]}"; do
     if git rev-parse --verify -q "$b" >/dev/null; then
       ahead="$(git rev-list --count "$parent..$b" 2>/dev/null || echo '?')"
       behind="$(git rev-list --count "$b..$parent" 2>/dev/null || echo '?')"
       st="$(pr_state "$b")"
+      [ "$b" = "$bottom" ] && bottom_ahead="$ahead"
+      [ "$st" = "MERGED" ] && any_merged=1
       printf '  %-30s +%s/-%s vs %s   PR:%s\n' "$b" "$ahead" "$behind" "${parent#"$REMOTE"/}" "$st"
     else
       printf '  %-30s (missing locally)\n' "$b"
     fi
     parent="$b"
   done
+
+  show_land_hint "$bottom" "$bottom_ahead" "$any_merged"
+}
+
+# Read-only land-pending indicator for `show`. A squash-merged base that GitHub
+# folded into trunk and retargeted out of the PR chain leaves the dependent
+# branch sitting on the old (un-squashed) commits, so its ahead-count vs trunk
+# is inflated until `land` rebases it. That state is otherwise invisible — the
+# line looks like a healthy single branch with a confusingly high count. Surface
+# it with the merged base's name and the true post-land count.
+show_land_hint() {
+  local bottom="$1" bottom_ahead="$2" any_merged="$3"
+
+  # Case A: a branch still in the chain shows PR:MERGED (auto-delete off, or run
+  # before GitHub retargets). Already visible above; just add the call to action.
+  if [ "$any_merged" -eq 1 ]; then
+    echo >&2
+    info "⚠ land pending: a branch above shows PR:MERGED but is still in the chain."
+    info "  → run 'restack land' to drop it and rebase the rest onto $TRUNK."
+    return
+  fi
+
+  # Case B: the standard GitHub flow — the merged base is gone from the chain.
+  # Recover it the same way `land` does (gh-gated to avoid false positives when
+  # we can't confirm the PR was actually merged).
+  command -v gh >/dev/null 2>&1 || return
+  discover_merged_base "$bottom"
+  [ -n "$DISCOVERED_BASE" ] || return
+
+  local corrected
+  corrected="$(git rev-list --count "$DISCOVERED_BASE..$bottom" 2>/dev/null || echo '?')"
+  echo >&2
+  info "⚠ land pending: '$DISCOVERED_NAME' is squash-merged into $TRUNK but still in"
+  info "  local history (inflates the +$bottom_ahead above)."
+  info "  → run 'restack land' to drop it (+$bottom_ahead → +$corrected)."
 }
 
 # ---------------------------------------------------------------------------
@@ -555,7 +593,10 @@ Stand on any branch in the stack (not trunk) with a clean working tree, and run:
 
   restack show        Read-only. Print the detected stack: trunk, each branch's
   (ls, detect)        commits ahead/behind its parent, and PR state. Run this
-                      first to preview what an action would touch.
+                      first to preview what an action would touch. Warns when a
+                      'land' is pending — i.e. a base was squash-merged into
+                      trunk but the stack hasn't been rebased off it yet (its
+                      ahead-count is inflated until you run 'restack land').
 
   restack sync        Trunk moved, or you added/amended commits on a lower
                       branch. Rebases each branch onto its updated parent

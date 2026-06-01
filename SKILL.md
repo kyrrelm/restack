@@ -87,6 +87,14 @@ Run `restack show` first to display the detected stack and PR states so the
 user can confirm. Position doesn't matter beyond needing to be on *some* branch
 in the stack (not trunk) so detection has an anchor.
 
+`restack show` also flags a **pending land**: after you squash-merge a lower PR,
+GitHub folds it into trunk and retargets the dependent PR, but your local branch
+still sits on the old un-squashed commits — so its ahead-count is inflated and
+the line otherwise looks like a healthy single branch. `show` detects this (the
+same way `land` does) and prints a `⚠ land pending` banner naming the merged base
+and the true post-land count, e.g. `(+25 → +18)`. When you see it, run
+`restack land`.
+
 ## When a rebase conflicts
 
 The script stops and prints the conflicted branch. Do **not** run
