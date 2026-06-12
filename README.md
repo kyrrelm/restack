@@ -1,10 +1,11 @@
 # restack
 
-A small, stateless CLI for maintaining a chain of dependent GitHub PRs (a "stack")
-in a **squash-merge** workflow. It does the fiddly rebase bookkeeping — propagating
-changes up the stack, and rebasing onto trunk after the bottom PR merges — without
-asking you to install a platform, log in, or maintain a metadata file. Just stand on
-any branch in the stack and it auto-detects the whole chain from your PR base branches.
+A small, stateless CLI for inspecting and maintaining a chain of dependent GitHub PRs
+(a "stack") in a **squash-merge** workflow. It shows you the detected stack at a glance
+and does the fiddly rebase bookkeeping — propagating changes up the stack, and rebasing
+onto trunk after the bottom PR merges — without asking you to install a platform, log in,
+or maintain a metadata file. Just stand on any branch in the stack and it auto-detects
+the whole chain from your PR base branches.
 
 ```
 restack show     # preview the detected stack + PR states

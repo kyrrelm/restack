@@ -232,9 +232,9 @@ show_land_hint() {
   # Case B: the standard GitHub flow — the merged base is gone from the chain.
   # Recover it the same way `land` does (gh-gated to avoid false positives when
   # we can't confirm the PR was actually merged).
-  command -v gh >/dev/null 2>&1 || return
+  command -v gh >/dev/null 2>&1 || return 0
   discover_merged_base "$bottom"
-  [ -n "$DISCOVERED_BASE" ] || return
+  [ -n "$DISCOVERED_BASE" ] || return 0
 
   local corrected
   corrected="$(git rev-list --count "$DISCOVERED_BASE..$bottom" 2>/dev/null || echo '?')"

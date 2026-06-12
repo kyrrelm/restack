@@ -7,8 +7,8 @@
 #       of the bottom) must resolve to the fork point and land correctly.
 #
 set -euo pipefail
-BASH_BIN="${BASH_BIN:-/opt/homebrew/bin/bash}"
-RESTACK="${RESTACK:-/Users/kyrremoe/.claude/skills/restack/restack.sh}"
+BASH_BIN="${BASH_BIN:-$(command -v bash)}"
+RESTACK="${RESTACK:-"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/restack.sh"}"
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 git config --global user.email t@t >/dev/null 2>&1 || true
 

@@ -1,14 +1,19 @@
 ---
 name: restack
 description: >-
-  Maintain manually-stacked GitHub PRs in a squash-merge workflow. Use when the
-  user has a chain of dependent branches/PRs (a "stack") and either (1) has new
-  commits on the trunk or on a lower branch that need propagating up the stack,
-  or (2) has just squash-merged the bottom PR and needs the rest rebased onto
-  trunk. Triggers: "restack", "rebase my stack", "I merged the base PR",
-  "propagate my base changes up", "update the stacked PRs", "my stack is out of
-  date". Works on any repo today — needs only local git + the `gh` CLI, not
-  GitHub's private-preview Stacked PRs feature.
+  Maintain and inspect manually-stacked GitHub PRs in a squash-merge workflow.
+  Use whenever the user has — or might have — a chain of dependent branches/PRs
+  (a "stack") and wants to (1) inspect its state: confirm they're in a stack, see
+  the layers/trunk/PR states or how far branches have drifted ("am I in a stack",
+  "what's my stack look like", "show/check my stack", "is this branch stacked");
+  (2) propagate changes up after the trunk moved or a lower branch gained commits
+  ("rebase my stack", "propagate my base changes up", "update the stacked PRs",
+  "my stack is out of date"); or (3) rebase the rest onto trunk after the bottom
+  PR was squash-merged ("I merged the base PR", "land my stack"). The read-only
+  `restack show` auto-detects the stack from PR base branches, so prefer it over
+  hand-running git/gh even just to answer "are we in a stack?". Works on any repo
+  today — needs only local git + the `gh` CLI, not GitHub's private-preview
+  Stacked PRs feature.
 ---
 
 # restack — manual stacked-PR maintenance

@@ -25,8 +25,8 @@
 #
 set -euo pipefail
 
-BASH_BIN="${BASH_BIN:-/opt/homebrew/bin/bash}"
-RESTACK="${RESTACK:-/Users/kyrremoe/.claude/skills/restack/restack.sh}"
+BASH_BIN="${BASH_BIN:-$(command -v bash)}"
+RESTACK="${RESTACK:-"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/restack.sh"}"
 
 WORK="$(mktemp -d /tmp/restack_test.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
