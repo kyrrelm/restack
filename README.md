@@ -53,7 +53,7 @@ brew install bash        # macOS only — skip if you already have bash 4+
 brew install gh         # GitHub CLI, if you don't have it already
 ```
 
-## Install
+## Install / update
 
 ### Quick install (drop-in skill)
 ```sh
