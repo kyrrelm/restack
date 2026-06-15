@@ -171,6 +171,22 @@ branch_pr_merged() {
   [ -n "$n" ]
 }
 
+# Echo the base branch of a branch's most-recent MERGED PR (empty if none).
+# This is how we tell apart two states that look identical in local git history:
+# a base squash-merged INTO TRUNK (a real `land` candidate — its commits must be
+# dropped) versus a child squash-merged into its PARENT branch (already folded
+# into that parent as one squash commit — nothing to land).
+merged_pr_base() {
+  command -v gh >/dev/null 2>&1 || return 0
+  gh pr list --head "$1" --state merged --json baseRefName -q '.[0].baseRefName' 2>/dev/null
+}
+
+# Echo the head branches of MERGED PRs that targeted <branch> (its merged children).
+merged_children() {
+  command -v gh >/dev/null 2>&1 || return 0
+  gh pr list --base "$1" --state merged --json headRefName -q '.[].headRefName' 2>/dev/null
+}
+
 # Echo the worktree path that has <branch> checked out, if any (empty if none).
 worktree_owner() {
   local want="$1" key val cur=""
@@ -193,14 +209,15 @@ cmd_show() {
   local base_ref="$TRUNK"
   git rev-parse --verify -q "$REMOTE/$TRUNK" >/dev/null && base_ref="$REMOTE/$TRUNK"
   local parent="$base_ref" b ahead behind st
-  local bottom="${BRANCHES[0]}" bottom_ahead="" any_merged=0
+  local bottom="${BRANCHES[0]}" bottom_ahead=""
+  MERGED_IN_CHAIN=()
   for b in "${BRANCHES[@]}"; do
     if git rev-parse --verify -q "$b" >/dev/null; then
       ahead="$(git rev-list --count "$parent..$b" 2>/dev/null || echo '?')"
       behind="$(git rev-list --count "$b..$parent" 2>/dev/null || echo '?')"
       st="$(pr_state "$b")"
       [ "$b" = "$bottom" ] && bottom_ahead="$ahead"
-      [ "$st" = "MERGED" ] && any_merged=1
+      [ "$st" = "MERGED" ] && MERGED_IN_CHAIN+=("$b")
       printf '  %-30s +%s/-%s vs %s   PR:%s\n' "$b" "$ahead" "$behind" "${parent#"$REMOTE"/}" "$st"
     else
       printf '  %-30s (missing locally)\n' "$b"
@@ -208,7 +225,17 @@ cmd_show() {
     parent="$b"
   done
 
-  show_land_hint "$bottom" "$bottom_ahead" "$any_merged"
+  show_land_hint "$bottom" "$bottom_ahead"
+}
+
+# A child squash-merged into its PARENT branch (its PR base was the parent, not
+# trunk) is already folded into that parent as one squash commit. There's nothing
+# to land — the child branch is just done — but it lingers in local history and
+# looks identical to a real land-pending base unless you check the PR's base.
+folded_into_parent_note() {  # child  parent
+  info "ℹ '$1' was squash-merged into '$2' (its PR base), not into $TRUNK — its"
+  info "  commits are already folded into '$2' as one squash commit, so there's"
+  info "  nothing to land. The branch is done; delete it: git branch -D $1"
 }
 
 # Read-only land-pending indicator for `show`. A squash-merged base that GitHub
@@ -216,32 +243,58 @@ cmd_show() {
 # branch sitting on the old (un-squashed) commits, so its ahead-count vs trunk
 # is inflated until `land` rebases it. That state is otherwise invisible — the
 # line looks like a healthy single branch with a confusingly high count. Surface
-# it with the merged base's name and the true post-land count.
+# it with the merged base's name and the true post-land count. A merged branch
+# whose PR base was a PARENT (not trunk) is a different thing entirely — its work
+# is already folded in — so classify by the merged PR's base, not by git history.
 show_land_hint() {
-  local bottom="$1" bottom_ahead="$2" any_merged="$3"
+  local bottom="$1" bottom_ahead="$2"
 
   # Case A: a branch still in the chain shows PR:MERGED (auto-delete off, or run
-  # before GitHub retargets). Already visible above; just add the call to action.
-  if [ "$any_merged" -eq 1 ]; then
-    echo >&2
-    info "⚠ land pending: a branch above shows PR:MERGED but is still in the chain."
-    info "  → run 'restack land' to drop it and rebase the rest onto $TRUNK."
+  # before GitHub retargets). Classify each by its merged PR's base: into trunk
+  # is a real land-pending; into a parent on this line is already folded in.
+  if [ "${#MERGED_IN_CHAIN[@]}" -gt 0 ]; then
+    local b base printed_land=0
+    for b in "${MERGED_IN_CHAIN[@]}"; do
+      base="$(merged_pr_base "$b")"
+      if [ "$base" != "$TRUNK" ] && [ -n "$base" ]; then
+        echo >&2
+        folded_into_parent_note "$b" "$base"
+      elif [ "$printed_land" -eq 0 ]; then
+        echo >&2
+        info "⚠ land pending: a branch above shows PR:MERGED but is still in the chain."
+        info "  → run 'restack land' to drop it and rebase the rest onto $TRUNK."
+        printed_land=1
+      fi
+    done
     return
   fi
 
-  # Case B: the standard GitHub flow — the merged base is gone from the chain.
-  # Recover it the same way `land` does (gh-gated to avoid false positives when
-  # we can't confirm the PR was actually merged).
   command -v gh >/dev/null 2>&1 || return 0
-  discover_merged_base "$bottom"
-  [ -n "$DISCOVERED_BASE" ] || return 0
 
-  local corrected
-  corrected="$(git rev-list --count "$DISCOVERED_BASE..$bottom" 2>/dev/null || echo '?')"
-  echo >&2
-  info "⚠ land pending: '$DISCOVERED_NAME' is squash-merged into $TRUNK but still in"
-  info "  local history (inflates the +$bottom_ahead above)."
-  info "  → run 'restack land' to drop it (+$bottom_ahead → +$corrected)."
+  # Case B: the standard GitHub flow — a base squash-merged into trunk is gone
+  # from the chain. Recover it the same way `land` does (now gated to bases whose
+  # PR base was trunk, so a child folded into a parent can't masquerade as one).
+  discover_merged_base "$bottom"
+  if [ -n "$DISCOVERED_BASE" ]; then
+    local corrected
+    corrected="$(git rev-list --count "$DISCOVERED_BASE..$bottom" 2>/dev/null || echo '?')"
+    echo >&2
+    info "⚠ land pending: '$DISCOVERED_NAME' is squash-merged into $TRUNK but still in"
+    info "  local history (inflates the +$bottom_ahead above)."
+    info "  → run 'restack land' to drop it (+$bottom_ahead → +$corrected)."
+    return
+  fi
+
+  # Case C: a child squash-merged into THIS branch (its parent) and still hanging
+  # around locally. Its work is folded in; flag the leftover branch, not a land.
+  local c
+  while read -r c; do
+    [ -n "$c" ] || continue
+    git rev-parse --verify -q "$c" >/dev/null || continue
+    echo >&2
+    folded_into_parent_note "$c" "$bottom"
+    break
+  done < <(merged_children "$bottom")
 }
 
 # ---------------------------------------------------------------------------
@@ -413,8 +466,9 @@ cmd_sync() {
 # chain (the standard GitHub flow). Scans LOCAL heads *and* remote-tracking refs
 # (the base often survives only as origin/<name> if it was never a local branch,
 # or vice-versa). A candidate is a ref that SHARES HISTORY with the stack bottom
-# and whose PR is MERGED (checked via PR list by head name, which works even
-# after the branch is deleted).
+# and whose PR was MERGED INTO TRUNK (checked via PR list by head name, which
+# works even after the branch is deleted). The base==trunk gate is what keeps a
+# child merged back into its parent — which also shares history — from matching.
 #
 # The cut we return is merge-base(ref, bottom), NOT the ref's tip. These differ
 # when the base branch advanced past the point the bottom forked from it — i.e.
@@ -446,7 +500,11 @@ discover_merged_base() {
     mb="$(git merge-base "$ref" "$bottom" 2>/dev/null)" || continue              # shares history with bottom
     [ -n "$mb" ] || continue
     git merge-base --is-ancestor "$mb" "$REMOTE/$TRUNK" 2>/dev/null && continue   # fork already in trunk => not a pending squash
-    if [ "$have_gh" -eq 1 ]; then branch_pr_merged "$short" || continue; fi
+    # Only a base whose PR was merged INTO TRUNK is a land candidate. A branch
+    # merged into a PARENT (e.g. a child folded back into its parent) shares
+    # history with the bottom too, but landing it would wrongly drop the bottom's
+    # own commits — so require base==trunk, not merely "PR merged".
+    if [ "$have_gh" -eq 1 ]; then [ "$(merged_pr_base "$short")" = "$TRUNK" ] || continue; fi
     n="$(git rev-list --count "$REMOTE/$TRUNK..$mb" 2>/dev/null || echo 0)"       # rank by how far the cut reaches into bottom
     if [ "$n" -gt "$best_n" ]; then best_n="$n"; best="$mb"; DISCOVERED_NAME="$short"; DISCOVERED_TIP="$ref"; fi
   done < <( git for-each-ref --format='%(refname:short)' refs/heads
