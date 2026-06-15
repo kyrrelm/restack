@@ -43,8 +43,10 @@ cat > "$MOCKBIN/gh" <<'GH'
 #   gh pr view <b> --json baseRefName -q .baseRefName
 #   gh pr view <b> --json number      -q .number
 #   gh pr view <b> --json state       -q .state
-#   gh pr list --base <b> --json headRefName -q '.[].headRefName'
-#   gh pr list --head <b> --state merged --json number -q '.[0].number'
+#   gh pr list --base <b> --json headRefName -q '.[].headRefName'           (open children)
+#   gh pr list --base <b> --state merged --json headRefName                 (merged children)
+#   gh pr list --head <b> --state merged --json number -q '.[0].number'     (is it merged?)
+#   gh pr list --head <b> --state merged --json baseRefName                 (merged into what?)
 #   gh pr edit <b> --base <trunk>
 sub="$2"
 case "$sub" in
@@ -58,11 +60,15 @@ case "$sub" in
     esac;;
   list)
     case "$*" in
-      *--base\ main*)  echo mid;;
+      *--state\ merged*)                           # MERGED-only queries
+        case "$*" in
+          *--head\ base*) case "$*" in *baseRefName*) echo main;; *) echo 149;; esac;;
+          *--base\ main*) echo base;;              # base #149 was merged INTO main
+          *) : ;;                                  # nothing else merged
+        esac;;
+      *--base\ main*)  echo mid;;                   # open children
       *--base\ mid*)   echo top;;
-      *--base\ top*)   : ;;                       # no children
-      *--head\ base*)  echo 149;;                 # the MERGED base PR
-      *--head\ *)      : ;;                        # others: not merged
+      *--base\ top*)   : ;;                         # no children
       *) : ;;
     esac;;
   edit) exit 0;;                                   # retarget noop

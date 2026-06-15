@@ -53,7 +53,7 @@ brew install bash        # macOS only — skip if you already have bash 4+
 brew install gh         # GitHub CLI, if you don't have it already
 ```
 
-## Install
+## Install / update
 
 ### Quick install (drop-in skill)
 ```sh
@@ -90,6 +90,20 @@ export PATH="$HOME/.local/bin:$PATH"
 fpath=("$HOME/.zsh/completions" $fpath)
 autoload -Uz compinit && compinit
 ```
+
+> **Don't blindly append these three lines.** A lived-in `~/.zshrc` often
+> already exports `$HOME/.local/bin` and already calls `compinit` — add those
+> again and you've got a duplicate `PATH` entry and a redundant (slower, occasionally
+> flaky) second `compinit`. In practice the only line most people are missing is
+> `fpath=(...)`, and it **must** appear *before* `compinit` runs or your new
+> completions dir is never scanned. So look at what's there first and slot the
+> `fpath` line into your existing completion block, rather than tacking all three
+> onto the end.
+>
+> Easiest of all: open your shell config in an AI coding agent (Claude Code,
+> etc.) and ask it to wire up restack's completions — it'll read your actual
+> `~/.zshrc`, skip what's already present, and place the `fpath` line in the
+> right spot for your setup.
 
 The snippet above is for **bare zsh**. If you use a framework (oh-my-zsh,
 prezto, etc.), it runs its own `compinit`, so add **only** the `fpath=(...)`

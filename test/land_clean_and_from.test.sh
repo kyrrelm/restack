@@ -29,9 +29,13 @@ case "$sub" in
       *) exit 1;; esac;;
   list)
     case "$*" in
+      *--state\ merged*)
+        case "$*" in
+          *--head\ base*) case "$*" in *baseRefName*) echo main;; *) echo 149;; esac;;
+          *--base\ main*) echo base;;
+          *) : ;; esac;;
       *--base\ main*) echo mid;;
       *--base\ mid*)  echo top;;
-      *--head\ base*) echo 149;;
       *) : ;; esac;;
   edit) exit 0;; *) exit 0;; esac
 GH
